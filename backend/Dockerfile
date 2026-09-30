@@ -4,6 +4,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home streamdoctor
 COPY --chown=streamdoctor:streamdoctor . .
+RUN mkdir -p /app/storage/photos && chown -R streamdoctor:streamdoctor /app/storage
 USER streamdoctor
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

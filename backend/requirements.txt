@@ -36,6 +36,8 @@ mako==1.4.3
     # via alembic
 markupsafe==3.0.3
     # via mako
+pillow==12.3.0
+    # via -r requirements.in
 psycopg==3.3.6
     # via -r requirements.in
 psycopg-binary==3.3.6 ; implementation_name != 'pypy'
@@ -56,6 +58,8 @@ python-dotenv==1.2.3
     # via
     #   pydantic-settings
     #   uvicorn
+python-multipart==0.0.32
+    # via -r requirements.in
 pyyaml==6.0.3
     # via uvicorn
 sqlalchemy==2.1.1

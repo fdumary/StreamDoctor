@@ -9,6 +9,7 @@ from app.db.session import make_engine, make_session_factory
 from app.models.auth_session import AuthSession
 from app.models.user import Role, User
 from app.schemas.auth import Credentials
+from app.services.sites import seed_demo_sites
 
 
 def main():
@@ -19,7 +20,15 @@ def main():
     role.add_argument("role", choices=[r.value for r in Role])
     disable = sub.add_parser("disable-user", help="Disable an account and revoke all its sessions")
     disable.add_argument("email")
+    sub.add_parser("seed-demo-sites", help="Create two clearly labelled fictional stream sites")
     args = parser.parse_args()
+    if args.command == "seed-demo-sites":
+        engine = make_engine(get_settings().database_url)
+        with make_session_factory(engine)() as db:
+            count = seed_demo_sites(db)
+        engine.dispose()
+        print(f"Created {count} fictional demo sites.")
+        return
     email = str(Credentials(email=args.email, password="validation-only").email)
     engine = make_engine(get_settings().database_url)
     with make_session_factory(engine)() as db:

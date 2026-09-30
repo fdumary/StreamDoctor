@@ -4,6 +4,9 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import make_engine
 from app.models.auth_session import AuthSession  # noqa: F401
+from app.models.photo import Photo  # noqa: F401
+from app.models.report import Report  # noqa: F401
+from app.models.stream_site import StreamSite  # noqa: F401
 from app.models.user import User  # noqa: F401
 
 metadata = Base.metadata
