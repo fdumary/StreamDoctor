@@ -24,6 +24,14 @@ def login(data: Credentials, db: Database, request: Request, response: Response)
     return TokenResponse(access_token=token, expires_in=ttl * 60)
 
 
+@router.post("/guest", response_model=TokenResponse, dependencies=[Depends(limit_auth)])
+def guest(db: Database, request: Request, response: Response):
+    ttl = request.app.state.settings.session_ttl_minutes
+    token = auth.guest(db, ttl)
+    response.headers["Cache-Control"] = "no-store"
+    return TokenResponse(access_token=token, expires_in=ttl * 60)
+
+
 @router.post("/logout", status_code=204)
 def logout(db: Database, session: Annotated[AuthSession, Depends(current_session)]):
     db.delete(session)

@@ -50,6 +50,16 @@ def test_login_me_and_hashed_session(client, auth_headers, account):
         assert session.token_hash != raw
 
 
+def test_guest_session_can_access_user_profile(client):
+    response = client.post("/api/v1/auth/guest")
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    profile = client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert profile.status_code == 200
+    assert profile.json()["display_name"] == "Guest"
+    assert profile.json()["role"] == "volunteer"
+
+
 def test_invalid_login_has_generic_message(client, account, credentials):
     wrong = client.post("/api/v1/auth/login", json={**credentials, "password": "wrong-password-long"})
     absent = client.post("/api/v1/auth/login", json={**credentials, "email": "absent@example.com"})

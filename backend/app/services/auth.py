@@ -1,4 +1,5 @@
 from time import time
+from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
@@ -35,6 +36,22 @@ def login(db: Session, data: Credentials, ttl_minutes: int) -> str:
         raise HTTPException(401, "Incorrect email or password", headers={"WWW-Authenticate": "Bearer"})
     now = int(time())
     db.execute(delete(AuthSession).where(AuthSession.expires_at <= now))
+    token = new_token()
+    db.add(AuthSession(token_hash=token_digest(token), user_id=user.id, expires_at=now + ttl_minutes * 60))
+    db.commit()
+    return token
+
+
+def guest(db: Session, ttl_minutes: int) -> str:
+    user = User(
+        email=f"guest-{uuid4()}@guest.streamdoctor.invalid",
+        display_name="Guest",
+        password_hash=hash_password(new_token()),
+        role=Role.volunteer,
+    )
+    db.add(user)
+    db.flush()
+    now = int(time())
     token = new_token()
     db.add(AuthSession(token_hash=token_digest(token), user_id=user.id, expires_at=now + ttl_minutes * 60))
     db.commit()

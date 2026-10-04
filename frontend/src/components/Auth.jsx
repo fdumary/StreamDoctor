@@ -16,6 +16,14 @@ export default function Auth({ onLogin }) {
       onLogin(await request('/users/me'));
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
+  async function skipLogin() {
+    setBusy(true); setError('');
+    try {
+      const session = await request('/auth/guest', { method: 'POST' });
+      setToken(session.access_token);
+      onLogin(await request('/users/me'));
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  }
   return <main className="auth-page"><div className="panel auth-card">
     <div className="brand"><span className="brand-mark"><Waves size={21} /></span>StreamDoctor</div>
     <p className="eyebrow">OBSERVE · REVIEW · UNDERSTAND</p>
@@ -29,5 +37,6 @@ export default function Auth({ onLogin }) {
       <button className="primary-button" disabled={busy}>{busy ? 'Connecting…' : register ? 'Create account' : 'Sign in'}</button>
     </form>
     <button className="text-button" disabled={busy} onClick={() => { setRegister(!register); setError(''); }}>{register ? 'Already have an account? Sign in' : 'New here? Create an account'}</button>
+    <button className="text-button" disabled={busy} onClick={skipLogin}>Skip login</button>
   </div></main>;
 }
