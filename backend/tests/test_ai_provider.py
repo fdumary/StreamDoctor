@@ -168,6 +168,12 @@ def test_live_service_cannot_return_mock(provider_factory, result):
 
 
 def test_configuration():
+    settings = Settings(
+        _env_file=None,
+        ai_mode="http",
+        ai_agent_url="https://ai.internal.example",
+    )
+    assert settings.ai_service_url == "https://ai.internal.example/analyze"
     with pytest.raises(ValidationError):
         Settings(_env_file=None, ai_mode="http", ai_service_url=None)
     with pytest.raises(ValidationError):

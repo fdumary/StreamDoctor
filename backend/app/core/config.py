@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     ai_mode: Literal["disabled", "mock", "http"] = "disabled"
     ai_service_url: str | None = None
+    ai_agent_url: str | None = None
     ai_service_token: SecretStr | None = None
     ai_timeout_seconds: int = Field(default=30, ge=1, le=120)
     ai_max_response_bytes: int = Field(default=64 * 1024, ge=1024, le=1024 * 1024)
@@ -50,6 +51,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def ai_configuration(self):
+        if self.ai_mode == "http" and not self.ai_service_url and self.ai_agent_url:
+            self.ai_service_url = self.ai_agent_url.rstrip("/") + "/analyze"
         if self.ai_mode == "http" and not self.ai_service_url:
             raise ValueError("AI_SERVICE_URL is required for AI_MODE=http")
         if self.environment == "production" and self.ai_mode == "mock":
