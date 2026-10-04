@@ -1,86 +1,204 @@
-import { useMemo, useState } from 'react';
-import {
-	AlertTriangle,
-	ArrowRight,
-	Camera,
-	Check,
-	ChevronDown,
-	CircleHelp,
-	CloudRain,
-	Droplets,
-	Eye,
-	FileCheck2,
-	FlaskConical,
-	Info,
-	Leaf,
-	MapPin,
-	Menu,
-	RotateCcw,
-	ShieldCheck,
-	Sparkles,
-	Waves,
-	X,
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Eye, FileCheck2, FlaskConical, LogOut, MapPin, Menu, ShieldCheck, Waves } from 'lucide-react';
+import Auth from './components/Auth';
+import ObservationForm from './components/ObservationForm';
+import AIReview from './components/AIReview';
+import Insights, { TrustScore } from './components/Insights';
+import ReviewerPanel from './components/ReviewerPanel';
+import { allSites, hasSession, label, observationPayload, photoPath, reportPath, request, setToken } from './services/api';
 import './styles.css';
 
-const initialSymptoms = { clarity: 'cloudy', smell: 'earthy', foam: 'some', flow: 'normal', wildlife: 'fewer' };
-const symptomOptions = {
-	clarity: [['clear', 'Clear'], ['cloudy', 'Cloudy'], ['brown', 'Brown / murky']],
-	smell: [['none', 'No unusual smell'], ['earthy', 'Earthy'], ['sewage', 'Sewage / chemical']],
-	foam: [['none', 'None'], ['some', 'Some patches'], ['lots', 'Lots of foam']],
-	flow: [['low', 'Lower than usual'], ['normal', 'About normal'], ['high', 'Fast / high']],
-	wildlife: [['many', 'Lots of life'], ['usual', 'About usual'], ['fewer', 'Fewer than usual']],
-};
+const fields = ['clarity', 'smell', 'flow', 'foam', 'visible_life', 'water_color'];
+function localTime(value = new Date()) { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+function newForm() { return { ...Object.fromEntries(fields.map(key => [key, null])), notes: '', ph: '', observed_at: localTime() }; }
 
-function App() {
-	const [symptoms, setSymptoms] = useState(initialSymptoms);
-	const [photo, setPhoto] = useState(null);
-	const [aiStatus, setAiStatus] = useState('pending');
-	const [trustLens, setTrustLens] = useState(true);
-	const [audience, setAudience] = useState('citizens');
-	const [submitted, setSubmitted] = useState(false);
-	const riskSignals = useMemo(() => [symptoms.clarity === 'brown', symptoms.smell === 'sewage', symptoms.foam === 'lots', symptoms.wildlife === 'fewer'].filter(Boolean).length, [symptoms]);
-	const trustScore = aiStatus === 'rejected' ? 48 : Math.max(64, 94 - riskSignals * 6 - (aiStatus === 'pending' ? 4 : 0));
-	const health = trustLens ? (riskSignals > 1 ? 'yellow' : 'green') : 'yellow';
-	function updateSymptom(key, value) { setSymptoms((current) => ({ ...current, [key]: value })); setSubmitted(false); }
-	function handlePhoto(event) { const file = event.target.files?.[0]; if (file) { setPhoto(URL.createObjectURL(file)); setAiStatus('pending'); setSubmitted(false); } }
-	function resetCheckup() { setSymptoms(initialSymptoms); setPhoto(null); setAiStatus('pending'); setTrustLens(true); setSubmitted(false); }
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [booting, setBooting] = useState(hasSession());
+  const [sites, setSites] = useState([]);
+  const [siteId, setSiteId] = useState('');
+  const [synthetic, setSynthetic] = useState(false);
+  const [questions, setQuestions] = useState([]);
+  const [form, setForm] = useState(newForm);
+  const [report, setReport] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [assessment, setAssessment] = useState(null);
+  const [dirty, setDirty] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [reports, setReports] = useState({ items: [], total: 0 });
+  const [queue, setQueue] = useState(null);
+  const [card, setCard] = useState(null);
+  const [needs, setNeeds] = useState(null);
+  const [insightError, setInsightError] = useState('');
+  const [revision, setRevision] = useState(0);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [menu, setMenu] = useState(false);
+  const actionLock = useRef(false);
+  const analysisRequest = useRef(null);
+  const reviewRequest = useRef(null);
+  const site = sites.find(item => item.id === siteId);
+  const locked = report?.status === 'submitted';
+  const imageId = report?.photos.find(p => p.id === analysis?.evidence_photo_id)?.id || report?.photos.at(-1)?.id;
 
-	return (
-		<div className="app-shell">
-			<aside className="sidebar">
-				<div className="brand"><span className="brand-mark"><Waves size={21} /></span><span>StreamDoctor</span></div>
-				<div className="location-chip"><MapPin size={15} /><span>Riverside County</span><ChevronDown size={14} /></div>
-				<nav className="nav-list" aria-label="Main navigation"><a className="nav-item active" href="#checkup"><FlaskConical size={18} />New check-up</a><a className="nav-item" href="#overview"><Eye size={18} />Stream overview</a><a className="nav-item" href="#reports"><FileCheck2 size={18} />My reports <span className="nav-count">12</span></a></nav>
-				<div className="sidebar-bottom"><div className="sidebar-note"><ShieldCheck size={18} /><div><strong>Your data matters</strong><span>Verified reports help protect local water.</span></div></div><div className="profile"><div className="avatar">JM</div><div><strong>Jordan Miller</strong><span>Volunteer observer</span></div><ChevronDown size={15} /></div></div>
-			</aside>
-			<main className="main-content">
-				<header className="topbar"><button className="mobile-menu" aria-label="Open menu"><Menu size={21} /></button><div className="crumbs"><span>New check-up</span><span>/</span><strong>Mill Creek</strong></div><div className="top-actions"><span className="sync-status"><span className="status-dot" />Saved locally</span><button className="help-button" aria-label="Help"><CircleHelp size={20} /></button></div></header>
-				<div className="page-wrap">
-					<section className="hero-row"><div><p className="eyebrow">FIELD CHECK · OCTOBER 4, 2026</p><h1>How is Mill Creek feeling today?</h1><p className="hero-copy">A quick check helps build a clearer picture of the water we share.</p></div><div className="hero-weather"><CloudRain size={23} /><div><strong>After rain</strong><span>Last 24 hours</span></div></div></section>
-					<div className="workflow" id="checkup"><div className="step active"><span>1</span><div><strong>Observe</strong><small>Tell us what you see</small></div></div><div className="step-line" /><div className={`step ${aiStatus !== 'pending' ? 'active' : ''}`}><span>2</span><div><strong>Review</strong><small>Check the AI's second opinion</small></div></div><div className="step-line" /><div className={`step ${submitted ? 'active' : ''}`}><span>3</span><div><strong>Diagnose</strong><small>See the stream's health</small></div></div></div>
-					<div className="dashboard-grid">
-						<section className="panel checkup-panel"><div className="panel-heading"><div><span className="section-kicker">STEP 1 · YOUR OBSERVATION</span><h2>What are you noticing?</h2></div><button className="icon-button" onClick={resetCheckup} aria-label="Reset check-up"><RotateCcw size={17} /></button></div><div className="question-list"><Question icon={<Droplets size={18} />} label="Water clarity" hint="Look through the water, not at the reflection." value={symptoms.clarity} options={symptomOptions.clarity} onChange={(value) => updateSymptom('clarity', value)} /><Question icon={<Sparkles size={18} />} label="Unusual smell" hint="A healthy stream can smell earthy after rain." value={symptoms.smell} options={symptomOptions.smell} onChange={(value) => updateSymptom('smell', value)} /><Question icon={<Waves size={18} />} label="Foam or surface film" hint="Small bubbles from rain are normal." value={symptoms.foam} options={symptomOptions.foam} onChange={(value) => updateSymptom('foam', value)} /><div className="question-pair"><Question icon={<ArrowRight size={18} />} label="Water flow" value={symptoms.flow} options={symptomOptions.flow} onChange={(value) => updateSymptom('flow', value)} /><Question icon={<Leaf size={18} />} label="Visible life" value={symptoms.wildlife} options={symptomOptions.wildlife} onChange={(value) => updateSymptom('wildlife', value)} /></div></div><div className="photo-upload"><div className="photo-copy"><span className="upload-icon"><Camera size={18} /></span><div><strong>Add a photo <span>Optional</span></strong><small>A photo lets the AI offer a second opinion.</small></div></div><label className="upload-button">{photo ? 'Change photo' : 'Choose photo'}<input type="file" accept="image/*" onChange={handlePhoto} /></label>{photo && <img className="photo-thumb" src={photo} alt="Your stream observation" />}</div></section>
-						<section className="panel ai-panel"><div className="ai-banner"><span className="ai-spark"><Sparkles size={17} /></span><div><span className="section-kicker">STEP 2 · AI SECOND OPINION</span><h2>Does this look right?</h2></div><span className="beta-tag">BETA</span></div><div className="ai-visual">{photo ? <img src={photo} alt="Uploaded stream" /> : <div className="stream-illustration"><div className="sun" /><div className="ridge ridge-back" /><div className="ridge ridge-front" /><div className="water-line" /><div className="water-shine" /></div>}<div className="confidence-badge"><span className="mini-dot" />{photo ? 'Photo analyzed' : 'Example view'}</div></div><div className="suggestion"><div className="suggestion-title"><strong>AI sees: moderate turbidity</strong><span>72% confident</span></div><p>The water looks a little cloudy, which can happen after rain. I also notice a small patch of surface foam.</p><div className="highlight-row"><span><span className="highlight teal" />Cloudy water</span><span><span className="highlight gold" />Possible foam</span></div></div><div className="review-actions"><button className={`review-button accept ${aiStatus === 'accepted' ? 'selected' : ''}`} onClick={() => setAiStatus('accepted')}><Check size={16} />Looks right</button><button className={`review-button edit ${aiStatus === 'edited' ? 'selected' : ''}`} onClick={() => setAiStatus('edited')}><FlaskConical size={16} />Edit suggestion</button><button className={`review-button reject ${aiStatus === 'rejected' ? 'selected' : ''}`} onClick={() => setAiStatus('rejected')}><X size={16} />Not right</button></div><div className="ai-footnote"><Info size={15} />You stay in control. AI suggestions never change your report automatically.</div></section>
-					</div>
-					<section className="trust-strip"><div className="trust-score"><div className="score-ring" style={{ '--score': `${trustScore * 3.6}deg` }}><strong>{trustScore}</strong><span>/100</span></div><div><span className="section-kicker">REPORT TRUST SCORE</span><h3>{aiStatus === 'rejected' ? 'Needs a closer look' : 'Good signal quality'}</h3><p>Based on 4 explainable signals</p></div></div><div className="trust-signals"><Signal label="Photo agreement" value={aiStatus === 'rejected' ? 'Needs review' : 'Strong'} tone={aiStatus === 'rejected' ? 'warn' : 'good'} /><Signal label="Plausibility checks" value="Passed" tone="good" /><Signal label="Nearby reports" value="3 recent" tone="neutral" /><Signal label="Your track record" value="Reliable" tone="good" /></div></section>
-					<section className="diagnosis-section" id="overview"><div className="diagnosis-heading"><div><span className="section-kicker">STEP 3 · STREAM DIAGNOSIS</span><h2>Mill Creek health snapshot</h2></div><label className="lens-toggle"><span>Trust Lens</span><button className={trustLens ? 'on' : ''} onClick={() => setTrustLens((value) => !value)} aria-label="Toggle Trust Lens"><span /></button><span className="toggle-state">{trustLens ? 'On' : 'Off'}</span></label></div><div className="lens-note"><ShieldCheck size={16} /><span>{trustLens ? 'Showing trusted observations only' : 'Showing all observations, including reports under review'}</span><button aria-label="About Trust Lens"><CircleHelp size={15} /></button></div><div className="diagnosis-grid"><div className={`health-card ${health}`}><div className="health-top"><span className="traffic-light"><span /></span><span>{health === 'green' ? 'HEALTHY SIGNAL' : 'WATCH CLOSELY'}</span></div><h3>{health === 'green' ? 'Looking good, with a note' : 'A few things need attention'}</h3><p>{health === 'green' ? 'Mill Creek is showing mostly healthy signs today. Recent rain may explain the slight cloudiness.' : 'Cloudiness and fewer visible signs of life are worth watching after the recent rain.'}</p><div className="health-meter"><span style={{ width: health === 'green' ? '68%' : '44%' }} /></div><small>Confidence in this snapshot: {trustLens ? 'high' : 'moderate'}</small></div><AudienceCard audience={audience} setAudience={setAudience} trustLens={trustLens} /></div></section>
-					<div className="submit-row" id="reports"><div><ShieldCheck size={19} /><span>Your report will be checked before it joins the stream's story.</span></div><button className="primary-button" onClick={() => setSubmitted(true)}>{submitted ? 'Report saved' : 'Save this check-up'}<ArrowRight size={17} /></button></div>{submitted && <div className="success-toast"><Check size={17} /> Check-up saved. Thank you for looking out for Mill Creek.</div>}
-				</div>
-			</main>
-		</div>
-	);
+  function reset() { setForm(newForm()); setReport(null); setAnalysis(null); setAssessment(null); setPhotoFile(null); setDirty(false); setConsent(false); setError(''); setNotice(''); analysisRequest.current = null; reviewRequest.current = null; }
+  function expire() { setToken(''); setUser(null); setSites([]); setSiteId(''); setReports({ items: [], total: 0 }); setQueue(null); setCard(null); setNeeds(null); reset(); }
+  useEffect(() => {
+    const controller = new AbortController();
+    if (hasSession()) request('/users/me', { signal: controller.signal }).then(setUser).catch(err => { if (err.name !== 'AbortError') { setToken(''); setError(err.message); } }).finally(() => setBooting(false));
+    window.addEventListener('session-expired', expire);
+    return () => { controller.abort(); window.removeEventListener('session-expired', expire); };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    Promise.all([allSites(), request('/questionnaire'), request('/reports?limit=20')]).then(([available, questionnaire, mine]) => {
+      if (!active) return;
+      setSites(available); setQuestions(questionnaire.questions); setReports(mine);
+      if (available.length) { setSiteId(available[0].id); setSynthetic(available[0].is_demo); }
+    }).catch(err => { if (active) setError(err.message); });
+    return () => { active = false; };
+  }, [user]);
+
+  useEffect(() => {
+    setCard(null); setNeeds(null); setInsightError(''); setQueue(null);
+    if (!user || !siteId) return;
+    const controller = new AbortController();
+    const query = `?synthetic=${synthetic}`;
+    Promise.all([request(`/sites/${siteId}/diagnosis${query}`, { signal: controller.signal }), request(`/sites/${siteId}/monitoring-needs${query}`, { signal: controller.signal })]).then(([nextCard, nextNeeds]) => { setCard(nextCard); setNeeds(nextNeeds); }).catch(err => { if (err.name !== 'AbortError') setInsightError(err.message); });
+    if (user.role === 'reviewer') request(`/reviews${query}&limit=100&include_optional=true`, { signal: controller.signal }).then(setQueue).catch(err => { if (err.name !== 'AbortError') setError(err.message); });
+    return () => controller.abort();
+  }, [user, siteId, synthetic, revision]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let url = '';
+    setPhotoUrl('');
+    if (photoFile) { url = URL.createObjectURL(photoFile); setPhotoUrl(url); }
+    else if (imageId && report?.id) request(photoPath(report.id, imageId), { blob: true, signal: controller.signal }).then(blob => {
+      if (!controller.signal.aborted) { url = URL.createObjectURL(blob); setPhotoUrl(url); }
+    }).catch(err => { if (err.name !== 'AbortError') setError(err.message); });
+    return () => { controller.abort(); if (url) URL.revokeObjectURL(url); };
+  }, [photoFile, imageId, report?.id]);
+
+  async function perform(name, task) {
+    if (actionLock.current) return;
+    actionLock.current = true; setBusy(name); setError(''); setNotice('');
+    try { await task(); } catch (err) { setError(err.message || 'Something went wrong. Your saved data is still available.'); }
+    finally { actionLock.current = false; setBusy(''); }
+  }
+  async function refreshReports() { setReports(await request('/reports?limit=20')); }
+  function applyReport(item) {
+    setReport(item); setSiteId(item.site_id); setSynthetic(item.is_synthetic);
+    setForm({ ...Object.fromEntries(fields.map(key => [key, item[key]])), notes: item.notes, ph: item.ph ?? '', observed_at: localTime(item.observed_at) });
+    setDirty(false); setPhotoFile(null);
+  }
+  async function openReport(id) {
+    const item = await request(reportPath(id));
+    applyReport(item); setAnalysis(null); setAssessment(null); setConsent(false);
+    analysisRequest.current = null; reviewRequest.current = null;
+    if (item.latest_analysis_id) setAnalysis(await request(`${reportPath(id)}/analyses/${item.latest_analysis_id}`));
+    if (item.status === 'submitted') {
+      try { setAssessment(await request(`${reportPath(id)}/assessment`)); }
+      catch (err) { if (err.status !== 404) throw err; }
+    }
+    document.getElementById('checkup')?.scrollIntoView({ behavior: 'smooth' });
+  }
+  async function persistDraft() {
+    if (!siteId) throw new Error('Select a stream site first.');
+    if (!form.observed_at || Number.isNaN(new Date(form.observed_at).valueOf())) throw new Error('Choose a valid observation time.');
+    if (locked) return report;
+    const payload = { ...observationPayload(form), is_synthetic: synthetic };
+    let saved = report;
+    if (!saved) saved = await request('/reports', { method: 'POST', body: { ...payload, site_id: siteId } });
+    else if (dirty) saved = await request(reportPath(saved.id), { method: 'PATCH', body: payload });
+    setReport(saved); setDirty(false);
+    if (photoFile) {
+      const data = new FormData(); data.append('file', photoFile); data.append('source', synthetic ? 'synthetic' : 'own');
+      try { await request(`${reportPath(saved.id)}/photos`, { method: 'POST', body: data }); }
+      catch (err) { if (err.status !== 409 || !/already|duplicate/i.test(err.message)) throw err; }
+      setPhotoFile(null);
+      saved = await request(reportPath(saved.id)); setReport(saved);
+    }
+    return saved;
+  }
+  function update(key, value) { setForm(current => ({ ...current, [key]: value })); setDirty(true); }
+  function choosePhoto(event) {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { setError('Choose a photo smaller than 8 MB.'); return; }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setError('Choose a PNG, JPEG, or WebP image.'); return; }
+    setPhotoFile(file); setConsent(false); setDirty(true); setError('');
+  }
+  async function analyze() {
+    if (!consent) throw new Error('Allow photo analysis first.');
+    const saved = await persistDraft();
+    const photo = saved.photos.at(-1);
+    if (!photo) throw new Error('Attach a photo before requesting analysis.');
+    const key = `${saved.id}:${photo.id}:${saved.version}`;
+    if (analysisRequest.current?.key !== key) analysisRequest.current = { key, id: crypto.randomUUID() };
+    const result = await request(`${reportPath(saved.id)}/analysis`, { method: 'POST', body: { photo_id: photo.id, request_id: analysisRequest.current.id } });
+    analysisRequest.current = null; setAnalysis(result);
+    applyReport(await request(reportPath(saved.id)));
+    await refreshReports();
+  }
+  async function feedback(decisions) {
+    const result = await request(`${reportPath(report.id)}/analyses/${analysis.id}/feedback`, { method: 'POST', body: { decisions } });
+    setAnalysis(result); applyReport(await request(reportPath(report.id))); setNotice('Your AI decisions are saved.');
+  }
+  async function submit() {
+    if (fields.some(field => !form[field])) throw new Error('Answer every observation question. Choose “Unknown” when you are unsure.');
+    const saved = await persistDraft();
+    const submitted = await request(`${reportPath(saved.id)}/submit`, { method: 'POST' });
+    applyReport(submitted); setAssessment(await request(`${reportPath(saved.id)}/assessment`));
+    if (submitted.latest_analysis_id) setAnalysis(await request(`${reportPath(saved.id)}/analyses/${submitted.latest_analysis_id}`));
+    await refreshReports(); setRevision(value => value + 1); setNotice('Check-up submitted. Its trust assessment is ready.');
+  }
+  async function decide(decision, reason) {
+    const payload = { assessment_id: assessment.id, decision, reason };
+    const key = JSON.stringify({ report_id: report.id, ...payload });
+    if (reviewRequest.current?.key !== key) reviewRequest.current = { key, id: crypto.randomUUID() };
+    await request(`${reportPath(report.id)}/reviews`, { method: 'POST', body: { ...payload, request_id: reviewRequest.current.id } });
+    reviewRequest.current = null;
+    setAssessment(await request(`${reportPath(report.id)}/assessment`)); setRevision(value => value + 1); setNotice(`Report ${decision}.`);
+  }
+  async function downloadFHIR() {
+    const blob = await request(`${reportPath(report.id)}/fhir`, { blob: true });
+    const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'streamdoctor-synthetic-fhir.json'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function createSite(event) {
+    event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget));
+    await perform('Creating site…', async () => {
+      const created = await request('/sites', { method: 'POST', body: { name: data.name, latitude: Number(data.latitude), longitude: Number(data.longitude), is_demo: data.is_demo === 'on' } });
+      setSites(await allSites()); reset(); setSiteId(created.id); setSynthetic(created.is_demo); setNotice('Stream site created.');
+    });
+  }
+
+  if (booting) return <main className="auth-page"><p role="status">Restoring your session…</p></main>;
+  if (!user) return <Auth onLogin={setUser} />;
+  return <div className="app-shell">
+    <aside className={`sidebar ${menu ? 'mobile-open' : ''}`}><div className="brand"><span className="brand-mark"><Waves size={21} /></span><span>StreamDoctor</span></div>
+      <label className="site-picker"><MapPin size={15} /><select aria-label="Stream site" value={siteId} disabled={Boolean(busy)} onChange={event => { reset(); setSiteId(event.target.value); setSynthetic(sites.find(s => s.id === event.target.value)?.is_demo || false); }}><option value="" disabled>Select a stream</option>{sites.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <nav className="nav-list" aria-label="Main navigation"><button className="nav-item active" disabled={Boolean(busy)} onClick={() => { reset(); setMenu(false); document.getElementById('checkup')?.scrollIntoView(); }}><FlaskConical size={18} />New check-up</button><a className="nav-item" href="#overview" onClick={() => setMenu(false)}><Eye size={18} />Stream overview</a><a className="nav-item" href="#reports" onClick={() => setMenu(false)}><FileCheck2 size={18} />My reports <span className="nav-count">{reports.total}</span></a>{user.role === 'reviewer' && <a className="nav-item" href="#review" onClick={() => setMenu(false)}><ShieldCheck size={18} />Expert review</a>}</nav>
+      <div className="sidebar-bottom"><div className="sidebar-note"><ShieldCheck size={18} /><div><strong>Your data matters</strong><span>Explainable evidence helps protect local water.</span></div></div><div className="profile"><div className="avatar">{user.display_name.slice(0, 2).toUpperCase()}</div><div><strong>{user.display_name}</strong><span>{label(user.role)}</span></div><button className="icon-button" aria-label="Sign out" disabled={Boolean(busy)} onClick={() => perform('Signing out…', async () => { try { await request('/auth/logout', { method: 'POST' }); } finally { expire(); } })}><LogOut size={16} /></button></div></div>
+    </aside>
+    <main className="main-content"><header className="topbar"><button className="mobile-menu" aria-label="Toggle navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}><Menu size={21} /></button><div className="crumbs"><span>Check-up</span><span>/</span><strong>{site?.name || 'Select a stream'}</strong></div><span className="sync-status" role="status">{busy || (dirty || photoFile ? 'Unsaved changes' : report ? `Saved · ${report.status}` : 'New observation')}</span></header>
+      <div className="page-wrap"><section className="hero-row"><div><p className="eyebrow">FIELD CHECK · {new Date().toLocaleDateString()}</p><h1>How is your stream feeling today?</h1><p className="hero-copy">Observe from the bank. Share what you see, and what you’re unsure about.</p></div></section>
+        <label className="cohort-control"><input type="checkbox" checked={synthetic} disabled={Boolean(busy) || Boolean(report) || Boolean(site?.is_demo)} onChange={event => { setSynthetic(event.target.checked); setDirty(true); }} />Synthetic / demonstration data {site?.is_demo && <span>· Required for this fictional site</span>}</label>
+        {error && <div className="error-message" role="alert">{error}</div>}{notice && <div className="success-toast" role="status">{notice}</div>}
+        {!sites.length && <p className="notice">No stream sites yet. A reviewer can create one below, or run the local demo setup.</p>}
+        {siteId && <><div className="dashboard-grid"><ObservationForm questions={questions} form={form} update={update} photos={report?.photos || []} photoUrl={photoUrl} onPhoto={choosePhoto} onNew={reset} disabled={Boolean(busy)} locked={locked} onRemove={id => perform('Removing photo…', async () => { await request(`${reportPath(report.id)}/photos/${id}`, { method: 'DELETE' }); setReport(await request(reportPath(report.id))); setAnalysis(null); })} /><AIReview analysis={analysis} photoUrl={photoUrl} questions={questions} onAnalyze={() => perform('Analyzing photo…', analyze)} onFeedback={decisions => perform('Saving decisions…', () => feedback(decisions))} disabled={Boolean(busy)} locked={locked} dirty={dirty || Boolean(photoFile)} consent={consent} setConsent={setConsent} /></div>
+          <div className="submit-row"><div><ShieldCheck size={19} /><span>{locked ? 'Submitted report preserved.' : 'Your observations are saved on the server when you save or submit.'}</span></div><div className="submit-actions">{!locked && <><button className="option" disabled={Boolean(busy)} onClick={() => perform('Saving draft…', async () => { await persistDraft(); await refreshReports(); setNotice('Draft saved.'); })}>Save draft</button><button className="primary-button" disabled={Boolean(busy)} onClick={() => perform('Submitting…', submit)}>Submit check-up<ArrowRight size={17} /></button></>}{locked && <button className="option" disabled={Boolean(busy)} onClick={reset}>New check-up</button>}{assessment?.expert_verified && report?.is_synthetic && <button className="option" disabled={Boolean(busy)} onClick={() => perform('Exporting…', downloadFHIR)}>Download FHIR</button>}</div></div>
+          <TrustScore assessment={assessment} /><Insights card={card} needs={needs} error={insightError} />
+        </>}
+        <section className="panel reports-panel" id="reports"><div className="panel-heading"><h2>My reports</h2><button className="option" disabled={Boolean(busy)} onClick={() => perform('Refreshing…', refreshReports)}>Refresh</button></div>{!reports.items.length && <p className="muted">Your saved drafts and submitted check-ups will appear here.</p>}<ul className="report-list">{reports.items.map(item => <li key={item.id}><div><strong>{sites.find(s => s.id === item.site_id)?.name || 'Stream observation'}</strong><small>{new Date(item.observed_at).toLocaleString()} · {item.status}{item.is_synthetic ? ' · Synthetic' : ''}</small></div><button className="option" disabled={Boolean(busy)} onClick={() => perform('Opening report…', () => openReport(item.id))}>{item.status === 'draft' ? 'Resume draft' : 'View report'}</button></li>)}</ul>{reports.items.length < reports.total && <button className="option" disabled={Boolean(busy)} onClick={() => perform('Loading reports…', async () => { const next = await request(`/reports?limit=20&offset=${reports.items.length}`); setReports(current => ({ ...next, items: [...current.items, ...next.items] })); })}>Load more</button>}</section>
+        {user.role === 'reviewer' && <><ReviewerPanel queue={queue} report={report} user={user} assessment={assessment} onOpen={id => perform('Opening evidence…', () => openReport(id))} onDecide={(decision, reason) => perform('Saving review…', () => decide(decision, reason))} onReload={() => setRevision(v => v + 1)} disabled={Boolean(busy)} onStorm={value => perform('Recording storm…', async () => { if (!siteId) throw new Error('Choose a site first.'); await request(`/sites/${siteId}/monitoring-events`, { method: 'POST', body: { kind: 'storm', occurred_at: new Date(value).toISOString(), is_synthetic: synthetic, request_id: crypto.randomUUID() } }); setRevision(v => v + 1); setNotice('Storm recorded.'); })} />
+          <details className="panel site-form"><summary>Create a stream site</summary><form onSubmit={createSite}><label className="input-label">Site name<input name="name" required maxLength={120} /></label><div className="question-pair"><label className="input-label">Latitude<input name="latitude" type="number" min="-90" max="90" step="any" required /></label><label className="input-label">Longitude<input name="longitude" type="number" min="-180" max="180" step="any" required /></label></div><label className="consent"><input type="checkbox" name="is_demo" />Fictional demo site</label><button className="primary-button" disabled={Boolean(busy)}>Create site</button></form></details></>}
+      </div>
+    </main>
+  </div>;
 }
-
-function Question({ icon, label, hint, value, options, onChange }) { return <div className="question"><div className="question-label"><span className="question-icon">{icon}</span><div><strong>{label}</strong>{hint && <small>{hint}</small>}</div><button className="question-help" aria-label={`Explain ${label}`}><CircleHelp size={15} /></button></div><div className="option-row">{options.map(([key, text]) => <button key={key} className={value === key ? 'option selected' : 'option'} onClick={() => onChange(key)}>{text}</button>)}</div></div>; }
-function Signal({ label, value, tone }) { return <div className="signal"><span className={`signal-dot ${tone}`} /><div><span>{label}</span><strong>{value}</strong></div></div>; }
-function AudienceCard({ audience, setAudience, trustLens }) {
-	const contentByAudience = {
-		citizens: { label: 'For citizens', title: 'A good day for a riverside walk', body: 'The water looks mostly healthy. Keep children and pets out if the water becomes brown or smells unusual.', icon: <Leaf size={18} /> },
-		researchers: { label: 'For researchers', title: 'A mild post-rain anomaly', body: 'Turbidity is elevated against nearby observations. This report is a high-quality addition to the current trend.', icon: <FlaskConical size={18} /> },
-		planners: { label: 'For planners', title: 'Monitor the upper reach', body: 'Cloudiness is concentrated after rainfall. Compare the upper reach with downstream reports over the next 24 hours.', icon: <MapPin size={18} /> },
-	};
-	const content = contentByAudience[audience];
-	return <div className="audience-card"><div className="audience-tabs">{Object.keys(contentByAudience).map((key) => <button key={key} className={audience === key ? 'selected' : ''} onClick={() => setAudience(key)}>{contentByAudience[key].label.replace('For ', '')}</button>)}</div><div className="audience-content"><span className="audience-icon">{content.icon}</span><div><span className="section-kicker">{content.label.toUpperCase()} · {trustLens ? 'TRUSTED VIEW' : 'ALL DATA'}</span><h3>{content.title}</h3><p>{content.body}</p></div></div></div>;
-}
-export default App;

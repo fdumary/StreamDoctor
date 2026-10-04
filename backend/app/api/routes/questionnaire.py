@@ -72,7 +72,7 @@ def questionnaire(user: CurrentUser):
             "help": "Enter a value only if measured with suitable equipment. Do not estimate pH from appearance.",
         },
         "photo": {
-            "required_for_submission": False,
-            "help": "Photograph the stream from a safe accessible bank. Missing photos require expert review.",
+            "required_for_submission": True,
+            "help": "Photograph the stream from a safe accessible bank. Attach at least one photo to submit.",
         },
     }
