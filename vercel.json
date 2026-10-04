@@ -8,6 +8,7 @@
     "backend": {
       "root": "backend",
       "framework": "fastapi",
+      "installCommand": "pip install -r requirements.txt",
       "bindings": [
         {
           "type": "service",
