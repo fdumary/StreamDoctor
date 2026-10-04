@@ -9,7 +9,7 @@ import { allSites, hasSession, label, observationPayload, photoPath, reportPath,
 import './styles.css';
 
 const fields = ['clarity', 'smell', 'flow', 'foam', 'visible_life', 'water_color'];
-const guestSite = { id: '00000000-0000-4000-8000-000000000001', name: 'Guest stream preview', is_demo: true };
+const guestSite = { id: '00000000-0000-4000-8000-000000000001', name: 'Guest stream preview', is_demo: false };
 const guestQuestions = [
   ['clarity', 'How clear does the water look?', 'Cloudiness describes appearance, not a measured turbidity value.', ['clear', 'slightly_cloudy', 'cloudy', 'opaque', 'unknown']],
   ['smell', 'Did you notice a smell?', 'Only report a smell noticed from a safe distance.', ['none', 'earthy', 'sewage', 'chemical', 'other', 'unknown']],
@@ -55,18 +55,21 @@ export default function App() {
   const imageId = report?.photos.find(p => p.id === analysis?.evidence_photo_id)?.id || report?.photos.at(-1)?.id;
 
   function reset() { setForm(newForm()); setReport(null); setAnalysis(null); setAssessment(null); setPhotoFile(null); setDirty(false); setConsent(false); setError(''); setNotice(''); analysisRequest.current = null; reviewRequest.current = null; }
-  function enterGuest() {
-    setGuestMode(true); setToken(''); setUser({ id: 'guest', email: '', display_name: 'Guest', role: 'volunteer' });
-    setSites([guestSite]); setQuestions(guestQuestions); setSiteId(guestSite.id); setSynthetic(true); setReports({ items: [], total: 0 });
-    reset(); setNotice('Guest preview mode. Connect the backend to save observations.');
+  function enterGuest(profile) {
+    setGuestMode(true); setUser(profile || { id: 'guest', email: '', display_name: 'Guest', role: 'volunteer' });
+    setSites([guestSite]); setQuestions(guestQuestions); setSiteId(guestSite.id); setSynthetic(false); setReports({ items: [], total: 0 });
+    reset(); setNotice('Guest preview mode.');
   }
-  function expire() { setGuestMode(false); setToken(''); setUser(null); setSites([]); setSiteId(''); setReports({ items: [], total: 0 }); setQueue(null); setCard(null); setNeeds(null); reset(); }
+  function expire() {
+    if (guestMode) return;
+    setGuestMode(false); setToken(''); setUser(null); setSites([]); setSiteId(''); setReports({ items: [], total: 0 }); setQueue(null); setCard(null); setNeeds(null); reset();
+  }
   useEffect(() => {
     const controller = new AbortController();
     if (hasSession()) request('/users/me', { signal: controller.signal }).then(setUser).catch(err => { if (err.name !== 'AbortError') { setToken(''); setError(err.message); } }).finally(() => setBooting(false));
     window.addEventListener('session-expired', expire);
     return () => { controller.abort(); window.removeEventListener('session-expired', expire); };
-  }, []);
+  }, [guestMode]);
 
   useEffect(() => {
     if (!user || guestMode) return;
@@ -106,7 +109,10 @@ export default function App() {
     try { await task(); } catch (err) { setError(err.message || 'Something went wrong. Your saved data is still available.'); }
     finally { actionLock.current = false; setBusy(''); }
   }
-  async function refreshReports() { setReports(await request('/reports?limit=20')); }
+  async function refreshReports() {
+    if (guestMode) { setNotice('Preview reports refreshed.'); return; }
+    setReports(await request('/reports?limit=20'));
+  }
   function applyReport(item) {
     setReport(item); setSiteId(item.site_id); setSynthetic(item.is_synthetic);
     setForm({ ...Object.fromEntries(fields.map(key => [key, item[key]])), notes: item.notes, ph: item.ph ?? '', observed_at: localTime(item.observed_at) });
@@ -126,6 +132,7 @@ export default function App() {
   async function persistDraft() {
     if (!siteId) throw new Error('Select a stream site first.');
     if (!form.observed_at || Number.isNaN(new Date(form.observed_at).valueOf())) throw new Error('Choose a valid observation time.');
+    if (guestMode) { setDirty(false); return report; }
     if (locked) return report;
     const payload = { ...observationPayload(form), is_synthetic: synthetic };
     let saved = report;
@@ -203,7 +210,7 @@ export default function App() {
     </aside>
     <main className="main-content"><header className="topbar"><button className="mobile-menu" aria-label="Toggle navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}><Menu size={21} /></button><div className="crumbs"><span>Check-up</span><span>/</span><strong>{site?.name || 'Select a stream'}</strong></div><span className="sync-status" role="status">{busy || (dirty || photoFile ? 'Unsaved changes' : report ? `Saved · ${report.status}` : 'New observation')}</span></header>
       <div className="page-wrap"><section className="hero-row"><div><p className="eyebrow">FIELD CHECK · {new Date().toLocaleDateString()}</p><h1>How is your stream feeling today?</h1><p className="hero-copy">Observe from the bank. Share what you see, and what you’re unsure about.</p></div></section>
-        <label className="cohort-control"><input type="checkbox" checked={synthetic} disabled={Boolean(busy) || Boolean(report) || Boolean(site?.is_demo)} onChange={event => { setSynthetic(event.target.checked); setDirty(true); }} />Synthetic / demonstration data {site?.is_demo && <span>· Required for this fictional site</span>}</label>
+        {!guestMode && <label className="cohort-control"><input type="checkbox" checked={synthetic} disabled={Boolean(busy) || Boolean(report) || Boolean(site?.is_demo)} onChange={event => { setSynthetic(event.target.checked); setDirty(true); }} />Synthetic / demonstration data {site?.is_demo && <span>· Required for this fictional site</span>}</label>}
         {error && <div className="error-message" role="alert">{error}</div>}{notice && <div className="success-toast" role="status">{notice}</div>}
         {!sites.length && <p className="notice">No stream sites yet. A reviewer can create one below, or run the local demo setup.</p>}
         {siteId && <><div className="dashboard-grid"><ObservationForm questions={questions} form={form} update={update} photos={report?.photos || []} photoUrl={photoUrl} onPhoto={choosePhoto} onNew={reset} disabled={Boolean(busy)} locked={locked} onRemove={id => perform('Removing photo…', async () => { await request(`${reportPath(report.id)}/photos/${id}`, { method: 'DELETE' }); setReport(await request(reportPath(report.id))); setAnalysis(null); })} /><AIReview analysis={analysis} photoUrl={photoUrl} questions={questions} onAnalyze={() => perform('Analyzing photo…', analyze)} onFeedback={decisions => perform('Saving decisions…', () => feedback(decisions))} disabled={Boolean(busy)} locked={locked} dirty={dirty || Boolean(photoFile)} consent={consent} setConsent={setConsent} /></div>

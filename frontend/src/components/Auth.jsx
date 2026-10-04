@@ -21,7 +21,7 @@ export default function Auth({ onLogin, onGuest }) {
     try {
       const session = await request('/auth/guest', { method: 'POST' });
       setToken(session.access_token);
-      onLogin(await request('/users/me'));
+      onGuest(await request('/users/me'));
     } catch (_err) {
       setToken('');
       onGuest();
