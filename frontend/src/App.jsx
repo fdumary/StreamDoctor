@@ -76,6 +76,7 @@ export default function App() {
   }
   useEffect(() => {
     const controller = new AbortController();
+    if (guestMode) { setBooting(false); return () => controller.abort(); }
     if (hasSession()) request('/users/me', { signal: controller.signal }).then(setUser).catch(err => { if (err.name !== 'AbortError') { setToken(''); setError(err.message); } }).finally(() => setBooting(false));
     window.addEventListener('session-expired', expire);
     return () => { controller.abort(); window.removeEventListener('session-expired', expire); };
@@ -107,7 +108,7 @@ export default function App() {
     let url = '';
     setPhotoUrl('');
     if (photoFile) { url = URL.createObjectURL(photoFile); setPhotoUrl(url); }
-    else if (imageId && report?.id) request(photoPath(report.id, imageId), { blob: true, signal: controller.signal }).then(blob => {
+    else if (!guestMode && imageId && report?.id) request(photoPath(report.id, imageId), { blob: true, signal: controller.signal }).then(blob => {
       if (!controller.signal.aborted) { url = URL.createObjectURL(blob); setPhotoUrl(url); }
     }).catch(err => { if (err.name !== 'AbortError') setError(err.message); });
     return () => { controller.abort(); if (url) URL.revokeObjectURL(url); };
@@ -148,6 +149,12 @@ export default function App() {
       catch (err) { if (err.status !== 404) throw err; }
     }
     document.getElementById('checkup')?.scrollIntoView({ behavior: 'smooth' });
+  }
+  function removeGuestPhoto(id) {
+    if (!report) return;
+    const saved = { ...report, photos: report.photos.filter(photo => photo.id !== id) };
+    localStorage.setItem(guestDraftKey, JSON.stringify(saved));
+    setReport(saved); setPhotoFile(null); setPhotoUrl(''); setDirty(true);
   }
   async function persistDraft() {
     if (!siteId) throw new Error('Select a stream site first.');
@@ -202,6 +209,10 @@ export default function App() {
     const saved = await persistDraft();
     const photo = saved.photos.at(-1);
     if (!photo) throw new Error('Attach a photo before requesting analysis.');
+    if (guestMode) {
+      setNotice('Photo added to the preview draft.');
+      return;
+    }
     const key = `${saved.id}:${photo.id}:${saved.version}`;
     if (analysisRequest.current?.key !== key) analysisRequest.current = { key, id: crypto.randomUUID() };
     const result = await request(`${reportPath(saved.id)}/analysis`, { method: 'POST', body: { photo_id: photo.id, request_id: analysisRequest.current.id } });
@@ -216,6 +227,13 @@ export default function App() {
   async function submit() {
     if (fields.some(field => !form[field])) throw new Error('Answer every observation question. Choose “Unknown” when you are unsure.');
     const saved = await persistDraft();
+    if (guestMode) {
+      const submitted = { ...saved, status: 'submitted', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      localStorage.setItem(guestDraftKey, JSON.stringify(submitted));
+      setReport(submitted); setReports({ items: [guestReportSummary(submitted)], total: 1, limit: 20, offset: 0 });
+      setNotice('Check-up submitted in preview.');
+      return;
+    }
     const submitted = await request(`${reportPath(saved.id)}/submit`, { method: 'POST' });
     applyReport(submitted); setAssessment(await request(`${reportPath(saved.id)}/assessment`));
     if (submitted.latest_analysis_id) setAnalysis(await request(`${reportPath(saved.id)}/analyses/${submitted.latest_analysis_id}`));
@@ -247,14 +265,14 @@ export default function App() {
     <aside className={`sidebar ${menu ? 'mobile-open' : ''}`}><div className="brand"><span className="brand-mark"><Waves size={21} /></span><span>StreamDoctor</span></div>
       <label className="site-picker"><MapPin size={15} /><select aria-label="Stream site" value={siteId} disabled={Boolean(busy)} onChange={event => { reset(); setSiteId(event.target.value); setSynthetic(sites.find(s => s.id === event.target.value)?.is_demo || false); }}><option value="" disabled>Select a stream</option>{sites.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <nav className="nav-list" aria-label="Main navigation"><button className="nav-item active" disabled={Boolean(busy)} onClick={() => { reset(); setMenu(false); document.getElementById('checkup')?.scrollIntoView(); }}><FlaskConical size={18} />New check-up</button><a className="nav-item" href="#overview" onClick={() => setMenu(false)}><Eye size={18} />Stream overview</a><a className="nav-item" href="#reports" onClick={() => setMenu(false)}><FileCheck2 size={18} />My reports <span className="nav-count">{reports.total}</span></a>{user.role === 'reviewer' && <a className="nav-item" href="#review" onClick={() => setMenu(false)}><ShieldCheck size={18} />Expert review</a>}</nav>
-      <div className="sidebar-bottom"><div className="sidebar-note"><ShieldCheck size={18} /><div><strong>Your data matters</strong><span>Explainable evidence helps protect local water.</span></div></div><div className="profile"><div className="avatar">{user.display_name.slice(0, 2).toUpperCase()}</div><div><strong>{user.display_name}</strong><span>{label(user.role)}</span></div><button className="icon-button" aria-label="Sign out" disabled={Boolean(busy)} onClick={() => perform('Signing out…', async () => { try { await request('/auth/logout', { method: 'POST' }); } finally { expire(); } })}><LogOut size={16} /></button></div></div>
+      <div className="sidebar-bottom"><div className="sidebar-note"><ShieldCheck size={18} /><div><strong>Your data matters</strong><span>Explainable evidence helps protect local water.</span></div></div><div className="profile"><div className="avatar">{user.display_name.slice(0, 2).toUpperCase()}</div><div><strong>{user.display_name}</strong><span>{label(user.role)}</span></div><button className="icon-button" aria-label="Sign out" disabled={Boolean(busy)} onClick={() => perform('Signing out…', async () => { try { if (!guestMode) await request('/auth/logout', { method: 'POST' }); } finally { expire(); } })}><LogOut size={16} /></button></div></div>
     </aside>
     <main className="main-content"><header className="topbar"><button className="mobile-menu" aria-label="Toggle navigation" aria-expanded={menu} onClick={() => setMenu(!menu)}><Menu size={21} /></button><div className="crumbs"><span>Check-up</span><span>/</span><strong>{site?.name || 'Select a stream'}</strong></div><span className="sync-status" role="status">{busy || (dirty || photoFile ? 'Unsaved changes' : report ? `Saved · ${report.status}` : 'New observation')}</span></header>
       <div className="page-wrap"><section className="hero-row"><div><p className="eyebrow">FIELD CHECK · {new Date().toLocaleDateString()}</p><h1>How is your stream feeling today?</h1><p className="hero-copy">Observe from the bank. Share what you see, and what you’re unsure about.</p></div></section>
         {!guestMode && <label className="cohort-control"><input type="checkbox" checked={synthetic} disabled={Boolean(busy) || Boolean(report) || Boolean(site?.is_demo)} onChange={event => { setSynthetic(event.target.checked); setDirty(true); }} />Synthetic / demonstration data {site?.is_demo && <span>· Required for this fictional site</span>}</label>}
         {error && <div className="error-message" role="alert">{error}</div>}{notice && <div className="success-toast" role="status">{notice}</div>}
         {!sites.length && <p className="notice">No stream sites yet. A reviewer can create one below, or run the local demo setup.</p>}
-        {siteId && <><div className="dashboard-grid"><ObservationForm questions={questions} form={form} update={update} photos={report?.photos || []} photoUrl={photoUrl} onPhoto={choosePhoto} onNew={reset} disabled={Boolean(busy)} locked={locked} onRemove={id => perform('Removing photo…', async () => { await request(`${reportPath(report.id)}/photos/${id}`, { method: 'DELETE' }); setReport(await request(reportPath(report.id))); setAnalysis(null); })} /><AIReview analysis={analysis} photoUrl={photoUrl} questions={questions} onAnalyze={() => perform('Analyzing photo…', analyze)} onFeedback={decisions => perform('Saving decisions…', () => feedback(decisions))} disabled={Boolean(busy)} locked={locked} dirty={dirty || Boolean(photoFile)} consent={consent} setConsent={setConsent} /></div>
+        {siteId && <><div className="dashboard-grid"><ObservationForm questions={questions} form={form} update={update} photos={report?.photos || []} photoUrl={photoUrl} onPhoto={choosePhoto} onNew={reset} disabled={Boolean(busy)} locked={locked} onRemove={id => perform('Removing photo…', async () => { if (guestMode) removeGuestPhoto(id); else { await request(`${reportPath(report.id)}/photos/${id}`, { method: 'DELETE' }); setReport(await request(reportPath(report.id))); setAnalysis(null); } })} /><AIReview analysis={analysis} photoUrl={photoUrl} questions={questions} onAnalyze={() => perform('Analyzing photo…', analyze)} onFeedback={decisions => perform('Saving decisions…', () => feedback(decisions))} disabled={Boolean(busy)} locked={locked} dirty={dirty || Boolean(photoFile)} consent={consent} setConsent={setConsent} /></div>
           <div className="submit-row"><div><ShieldCheck size={19} /><span>{locked ? 'Submitted report preserved.' : 'Your observations are saved on the server when you save or submit.'}</span></div><div className="submit-actions">{!locked && <><button className="option" disabled={Boolean(busy)} onClick={() => perform('Saving draft…', async () => { await persistDraft(); await refreshReports(); setNotice('Draft saved.'); })}>Save draft</button><button className="primary-button" disabled={Boolean(busy)} onClick={() => perform('Submitting…', submit)}>Submit check-up<ArrowRight size={17} /></button></>}{locked && <button className="option" disabled={Boolean(busy)} onClick={reset}>New check-up</button>}{assessment?.expert_verified && report?.is_synthetic && <button className="option" disabled={Boolean(busy)} onClick={() => perform('Exporting…', downloadFHIR)}>Download FHIR</button>}</div></div>
           <TrustScore assessment={assessment} /><Insights card={card} needs={needs} error={insightError} />
         </>}
