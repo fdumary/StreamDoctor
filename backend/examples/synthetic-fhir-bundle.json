@@ -1,0 +1,319 @@
+{
+  "resourceType": "Bundle",
+  "id": "ef8914a8-a328-5b8c-96a5-6b4c20fe94bc",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://streamdoctor.example.org/tags",
+        "code": "synthetic",
+        "display": "Synthetic test data"
+      }
+    ]
+  },
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15",
+      "resource": {
+        "resourceType": "Location",
+        "id": "540b4cfb-1dc9-52c3-8271-4cf63f217c15",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Fictional stream location for synthetic testing. No real coordinates exported.</p></div>"
+        },
+        "status": "active",
+        "name": "Synthetic stream site",
+        "mode": "instance"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:e4edc4f1-796c-527f-80a5-7e1d6bd7943e",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "e4edc4f1-796c-527f-80a5-7e1d6bd7943e",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream clarity: clear.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream clarity"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueCodeableConcept": {
+          "text": "clear"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:f62269b1-e8e6-53d7-a6b7-95be8c743248",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "f62269b1-e8e6-53d7-a6b7-95be8c743248",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream smell: none.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream smell"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueCodeableConcept": {
+          "text": "none"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:309a74f3-8ba9-5a72-94e9-0f9493510189",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "309a74f3-8ba9-5a72-94e9-0f9493510189",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream flow: slow.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream flow"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueCodeableConcept": {
+          "text": "slow"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c019316a-ed41-541f-9088-8a862d2f74a3",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "c019316a-ed41-541f-9088-8a862d2f74a3",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream foam: none.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream foam"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueCodeableConcept": {
+          "text": "none"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:ea1fabd0-d18c-57e9-a1a7-b41259e4450e",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ea1fabd0-d18c-57e9-a1a7-b41259e4450e",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream visible life: plants.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream visible life"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueCodeableConcept": {
+          "text": "plants"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:3bdee9e8-7a78-534e-9a1e-2538265333db",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "3bdee9e8-7a78-534e-9a1e-2538265333db",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream water color: colorless.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream water color"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueCodeableConcept": {
+          "text": "colorless"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c4dee764-407f-5c03-bce6-470380e27dfb",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "c4dee764-407f-5c03-bce6-470380e27dfb",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic stream ph: 7.2.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream ph"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "valueQuantity": {
+          "value": 7.2,
+          "unit": "pH",
+          "system": "http://unitsofmeasure.org",
+          "code": "[pH]"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:6b8a1f7f-16d3-5d31-a181-3ccc20ea0836",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "6b8a1f7f-16d3-5d31-a181-3ccc20ea0836",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://streamdoctor.example.org/tags",
+              "code": "synthetic",
+              "display": "Synthetic test data"
+            }
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Synthetic environmental observations independently reviewed. Prototype trust score 100.0/100; evidence coverage 30%. This is not a clinical diagnosis or a water-safety certification.</p></div>"
+        },
+        "status": "final",
+        "code": {
+          "text": "Stream environmental observation report"
+        },
+        "subject": {
+          "reference": "urn:uuid:540b4cfb-1dc9-52c3-8271-4cf63f217c15"
+        },
+        "effectiveDateTime": "2026-01-01T12:00:00+00:00",
+        "issued": "2026-10-02T22:49:49.942358+00:00",
+        "result": [
+          {
+            "reference": "urn:uuid:e4edc4f1-796c-527f-80a5-7e1d6bd7943e"
+          },
+          {
+            "reference": "urn:uuid:f62269b1-e8e6-53d7-a6b7-95be8c743248"
+          },
+          {
+            "reference": "urn:uuid:309a74f3-8ba9-5a72-94e9-0f9493510189"
+          },
+          {
+            "reference": "urn:uuid:c019316a-ed41-541f-9088-8a862d2f74a3"
+          },
+          {
+            "reference": "urn:uuid:ea1fabd0-d18c-57e9-a1a7-b41259e4450e"
+          },
+          {
+            "reference": "urn:uuid:3bdee9e8-7a78-534e-9a1e-2538265333db"
+          },
+          {
+            "reference": "urn:uuid:c4dee764-407f-5c03-bce6-470380e27dfb"
+          }
+        ],
+        "conclusion": "Synthetic environmental observations independently reviewed. Prototype trust score 100.0/100; evidence coverage 30%. This is not a clinical diagnosis or a water-safety certification."
+      }
+    }
+  ]
+}

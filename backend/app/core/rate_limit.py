@@ -8,7 +8,10 @@ from fastapi import HTTPException, Request
 class AuthRateLimiter:
     """Per-process/IP limit for the single-worker demo. No proxy-header trust."""
 
-    def __init__(self, limit: int, window: int):
+    def __init__(
+        self, limit: int, window: int, message: str = "Too many authentication attempts. Try again later."
+    ):
+        self.message = message
         self.limit = limit
         self.window = window
         self.buckets: OrderedDict[str, deque[float]] = OrderedDict()
@@ -24,11 +27,11 @@ class AuthRateLimiter:
             if len(bucket) >= self.limit:
                 raise HTTPException(
                     429,
-                    "Too many authentication attempts. Try again later.",
+                    self.message,
                     headers={"Retry-After": str(self.window)},
                 )
             bucket.append(now)
-            # Bound memory for a demo server; use a shared limiter at larger scale.
+
             if len(self.buckets) > 10000:
                 self.buckets.popitem(last=False)
 

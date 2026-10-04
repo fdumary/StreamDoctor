@@ -23,7 +23,7 @@ class ObservationFields(BaseModel):
     foam: Foam | None = None
     visible_life: VisibleLife | None = None
     water_color: WaterColor | None = None
-    # Optional measured value, not inferred from photos. Unusual values remain valid.
+
     ph: float | None = Field(default=None, ge=0, le=14)
     notes: str = Field(default="", max_length=5000)
 
@@ -75,6 +75,11 @@ class ReportSummary(ObservationFields):
 
 
 class ReportResponse(ReportSummary):
+    latest_analysis_id: str | None = None
+    ai_status: Literal["not_requested", "running", "succeeded", "failed"] = "not_requested"
+    ai_is_mock: bool | None = None
+    ai_decision_recorded: bool = False
+
     photos: list[PhotoResponse]
     submitted_snapshot: dict | None
 

@@ -19,6 +19,7 @@ def client(tmp_path, monkeypatch):
             _env_file=None,
             database_url=url,
             environment="test",
+            ai_mode="disabled",
             auth_rate_limit=100,
             upload_dir=tmp_path / "photos",
         )

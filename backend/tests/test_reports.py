@@ -14,7 +14,7 @@ def test_complete_flow_persists_and_submission_is_frozen(client, auth_headers, r
     base = f"/api/v1/reports/{report['id']}"
     edited = client.patch(base, headers=auth_headers, json={"notes": "Updated field notes", "ph": 11})
     assert edited.status_code == 200
-    assert edited.json()["ph"] == 11  # unusual is not automatically invalid
+    assert edited.json()["ph"] == 11
     submitted = client.post(base + "/submit", headers=auth_headers)
     assert submitted.status_code == 200
     body = submitted.json()

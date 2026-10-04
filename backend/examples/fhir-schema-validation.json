@@ -1,0 +1,7 @@
+{
+  "valid": true,
+  "fhir_version": "4.0.1",
+  "validator": "HL7 R4 JSON Schema (Draft 6) and local reference checks",
+  "scope": "Structural validation only; terminology bindings, profiles, and all FHIRPath invariants are not checked.",
+  "errors": []
+}

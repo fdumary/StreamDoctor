@@ -21,8 +21,7 @@ def add_photo(db, report, file: UploadFile, metadata: PhotoMetadata, storage, se
     )
     if duplicate:
         raise HTTPException(409, "This photo is already attached to the report")
-    # Touch the versioned report before adding/removing photos. Concurrent submit/edit
-    # operations must not produce a submitted report with a different photo snapshot.
+
     report.updated_at = utcnow()
     from sqlalchemy.orm.exc import StaleDataError
 
@@ -74,5 +73,5 @@ def delete_photo(db, report, photo, storage):
     report.updated_at = utcnow()
     db.delete(photo)
     commit_change(db)
-    # If disk cleanup fails the file is orphaned, never publicly accessible.
+
     storage.cleanup(key)

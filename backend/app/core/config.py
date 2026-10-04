@@ -1,8 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +22,39 @@ class Settings(BaseSettings):
     max_stored_photo_bytes: int = Field(default=32 * 1024 * 1024, ge=1024)
     max_photo_pixels: int = Field(default=16_000_000, ge=1, le=40_000_000)
     max_photos_per_report: int = Field(default=5, ge=1, le=10)
+
+    ai_mode: Literal["disabled", "mock", "http"] = "disabled"
+    ai_service_url: str | None = None
+    ai_service_token: SecretStr | None = None
+    ai_timeout_seconds: int = Field(default=30, ge=1, le=120)
+    ai_max_response_bytes: int = Field(default=64 * 1024, ge=1024, le=1024 * 1024)
+    ai_rate_limit: int = Field(default=6, ge=1, le=120)
+
+    @field_validator("ai_service_url")
+    @classmethod
+    def service_url(cls, value):
+        if value is not None:
+            url = urlsplit(value)
+            if (
+                url.scheme not in {"http", "https"}
+                or not url.hostname
+                or url.username
+                or url.password
+                or url.query
+                or url.fragment
+            ):
+                raise ValueError(
+                    "AI service URL must be an HTTP(S) endpoint without credentials, query, or fragment"
+                )
+        return value
+
+    @model_validator(mode="after")
+    def ai_configuration(self):
+        if self.ai_mode == "http" and not self.ai_service_url:
+            raise ValueError("AI_SERVICE_URL is required for AI_MODE=http")
+        if self.environment == "production" and self.ai_mode == "mock":
+            raise ValueError("Mock AI is only available in development or test environments")
+        return self
 
     @field_validator("database_url")
     @classmethod

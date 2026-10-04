@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
+from app.models.ai_analysis import AIAnalysis
 from app.models.photo import Photo
 from app.models.report import Report, ReportStatus, utcnow
 from app.models.user import Role, User
@@ -23,7 +24,7 @@ def commit_change(db: Session):
 
 def get_report(db: Session, report_id: str, user: User, *, write: bool = False) -> Report:
     report = db.get(Report, report_id)
-    # Hide other users' drafts and reports rather than confirming their existence.
+
     if report is None or (
         report.contributor_id != user.id
         and (write or user.role != Role.reviewer or report.status != ReportStatus.submitted)
@@ -45,7 +46,17 @@ def report_response(db: Session, report: Report) -> ReportResponse:
     photos = db.scalars(
         select(Photo).where(Photo.report_id == report.id).order_by(Photo.created_at, Photo.id)
     ).all()
+    latest = db.scalar(
+        select(AIAnalysis)
+        .where(AIAnalysis.report_id == report.id)
+        .order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())
+        .limit(1)
+    )
     return ReportResponse(
+        latest_analysis_id=latest.id if latest else None,
+        ai_status=latest.status if latest else "not_requested",
+        ai_is_mock=latest.is_mock if latest else None,
+        ai_decision_recorded=bool(latest and latest.feedback),
         **ReportSummary.model_validate(report).model_dump(),
         photos=[photo_response(photo) for photo in photos],
         submitted_snapshot=report.submitted_snapshot,
@@ -72,8 +83,15 @@ def patch_report(db: Session, report: Report, data: ReportPatch) -> Report:
         synthetic_photo = db.scalar(
             select(Photo.id).where(Photo.report_id == report.id, Photo.source == "synthetic").limit(1)
         )
-        if site.is_demo or synthetic_photo:
-            raise HTTPException(422, "Demo sites and synthetic photos require a synthetic report")
+        mock_analysis = db.scalar(
+            select(AIAnalysis.id)
+            .where(AIAnalysis.report_id == report.id, AIAnalysis.is_mock.is_(True))
+            .limit(1)
+        )
+        if site.is_demo or synthetic_photo or mock_analysis:
+            raise HTTPException(
+                422, "Demo sites, synthetic photos, and mock AI history require a synthetic report"
+            )
     for field, value in changes.items():
         setattr(report, field, value)
     report.updated_at = utcnow()
@@ -83,9 +101,25 @@ def patch_report(db: Session, report: Report, data: ReportPatch) -> Report:
 
 
 def submit_report(db: Session, report: Report) -> Report:
-    # Idempotent re-submission returns the same snapshot and timestamp.
+    from app.services.assessments import assess_report
+
     if report.status == ReportStatus.submitted:
+        assess_report(db, report)
         return report
+    from app.services.analysis import expire_abandoned
+
+    expire_abandoned(db, report.id)
+    analyses = db.scalars(select(AIAnalysis).where(AIAnalysis.report_id == report.id)).all()
+    if any(item.status == "running" for item in analyses):
+        raise HTTPException(409, "Wait for the running analysis before submitting")
+    if any(
+        item.status == "succeeded"
+        and item.input_report_version == report.version
+        and not item.feedback
+        and item.result["suggestions"]
+        for item in analyses
+    ):
+        raise HTTPException(409, "Accept, edit, or reject the current AI suggestions before submitting")
     required = ("clarity", "smell", "flow", "foam", "visible_life", "water_color")
     missing = [field for field in required if getattr(report, field) is None]
     photos = db.scalars(select(Photo).where(Photo.report_id == report.id).order_by(Photo.id)).all()
@@ -106,6 +140,14 @@ def submit_report(db: Session, report: Report) -> Report:
         observed_at=report.observed_at.replace(tzinfo=timezone.utc).isoformat(),
         is_synthetic=report.is_synthetic,
         photo_ids=[photo.id for photo in photos],
+        ai_analysis_ids=[
+            item.id
+            for item in analyses
+            if item.status == "succeeded"
+            and (item.feedback_report_version if item.feedback else item.input_report_version)
+            == report.version
+        ],
+        ai_history_ids=[item.id for item in analyses],
     )
     report.submitted_snapshot = snapshot
     report.status = ReportStatus.submitted
@@ -113,6 +155,7 @@ def submit_report(db: Session, report: Report) -> Report:
     report.updated_at = report.submitted_at
     commit_change(db)
     db.refresh(report)
+    assess_report(db, report)
     return report
 
 

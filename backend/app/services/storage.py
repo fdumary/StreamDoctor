@@ -64,7 +64,7 @@ def normalize_photo(file: UploadFile, settings):
                 image.verify()
             with Image.open(io.BytesIO(raw)) as image:
                 oriented = ImageOps.exif_transpose(image)
-                # Rebuild the pixel image so EXIF/GPS/text metadata is not retained.
+
                 converted = oriented.convert(
                     "RGBA" if "A" in oriented.getbands() or "transparency" in oriented.info else "RGB"
                 )
