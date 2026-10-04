@@ -18,8 +18,10 @@ const guestQuestions = [
   ['visible_life', 'What living things can you see?', 'None observed does not establish that life is absent.', ['none_observed', 'plants', 'animals', 'both', 'unknown']],
   ['water_color', 'What color does the water appear?', 'Lighting and the streambed can affect color.', ['colorless', 'brown', 'green', 'black', 'other', 'unknown']],
 ].map(([field, question, help, options]) => ({ field, question, help, options: options.map(value => ({ value, label: value.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()) })) }));
+const guestDraftKey = 'streamdoctor.guest-draft';
 function localTime(value = new Date()) { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 function newForm() { return { ...Object.fromEntries(fields.map(key => [key, null])), notes: '', ph: '', observed_at: localTime() }; }
+function guestReportSummary(report) { return { ...report, photos: undefined }; }
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -58,7 +60,15 @@ export default function App() {
   function enterGuest(profile) {
     setGuestMode(true); setUser(profile || { id: 'guest', email: '', display_name: 'Guest', role: 'volunteer' });
     setSites([guestSite]); setQuestions(guestQuestions); setSiteId(guestSite.id); setSynthetic(false); setReports({ items: [], total: 0 });
-    reset(); setNotice('Guest preview mode.');
+    reset();
+    try {
+      const saved = JSON.parse(localStorage.getItem(guestDraftKey) || 'null');
+      if (saved?.id) {
+        setReport(saved); setForm({ ...Object.fromEntries(fields.map(key => [key, saved[key] ?? null])), notes: saved.notes || '', ph: saved.ph ?? '', observed_at: localTime(saved.observed_at) });
+        setReports({ items: [guestReportSummary(saved)], total: 1, limit: 20, offset: 0 });
+      }
+    } catch { localStorage.removeItem(guestDraftKey); }
+    setNotice('Guest preview mode.');
   }
   function expire() {
     if (guestMode) return;
@@ -110,7 +120,12 @@ export default function App() {
     finally { actionLock.current = false; setBusy(''); }
   }
   async function refreshReports() {
-    if (guestMode) { setNotice('Preview reports refreshed.'); return; }
+    if (guestMode) {
+      const saved = report || JSON.parse(localStorage.getItem(guestDraftKey) || 'null');
+      setReports(saved?.id ? { items: [guestReportSummary(saved)], total: 1, limit: 20, offset: 0 } : { items: [], total: 0, limit: 20, offset: 0 });
+      setNotice('Reports refreshed.');
+      return;
+    }
     setReports(await request('/reports?limit=20'));
   }
   function applyReport(item) {
@@ -119,6 +134,11 @@ export default function App() {
     setDirty(false); setPhotoFile(null);
   }
   async function openReport(id) {
+    if (guestMode) {
+      const saved = report?.id === id ? report : JSON.parse(localStorage.getItem(guestDraftKey) || 'null');
+      if (saved?.id) applyReport(saved);
+      return;
+    }
     const item = await request(reportPath(id));
     applyReport(item); setAnalysis(null); setAssessment(null); setConsent(false);
     analysisRequest.current = null; reviewRequest.current = null;
@@ -132,7 +152,28 @@ export default function App() {
   async function persistDraft() {
     if (!siteId) throw new Error('Select a stream site first.');
     if (!form.observed_at || Number.isNaN(new Date(form.observed_at).valueOf())) throw new Error('Choose a valid observation time.');
-    if (guestMode) { setDirty(false); return report; }
+    if (guestMode) {
+      const payload = observationPayload(form);
+      const now = new Date().toISOString();
+      const saved = {
+        ...(report || {}),
+        id: report?.id || `guest-report-${Date.now()}`,
+        site_id: siteId,
+        ...payload,
+        status: 'draft',
+        is_synthetic: false,
+        contributor_id: 'guest',
+        created_at: report?.created_at || now,
+        updated_at: now,
+        submitted_at: null,
+        version: report?.version || 1,
+        photos: report?.photos || [],
+      };
+      if (photoFile && !saved.photos.length) saved.photos = [{ id: `guest-photo-${Date.now()}`, original_name: photoFile.name, source: 'own' }];
+      localStorage.setItem(guestDraftKey, JSON.stringify(saved));
+      setReport(saved); setReports({ items: [guestReportSummary(saved)], total: 1, limit: 20, offset: 0 }); setDirty(false);
+      return saved;
+    }
     if (locked) return report;
     const payload = { ...observationPayload(form), is_synthetic: synthetic };
     let saved = report;
