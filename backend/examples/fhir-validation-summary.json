@@ -1,0 +1,32 @@
+{
+  "validator": "HL7 FHIR Validator CLI",
+  "validator_version": "6.10.4",
+  "fhir_version": "4.0.1",
+  "sample": "synthetic-fhir-bundle.json",
+  "sample_sha256": "6e4a7774ea741e69acca409b1ef7ca53d37e18e919b2fccf3a3f4d558763915b",
+  "exit_code": 0,
+  "issue_counts": {
+    "information": 10,
+    "warning": 8
+  },
+  "configuration": {
+    "external_terminology_services": false,
+    "allow_example_urls": true,
+    "network_access": false
+  },
+  "packages": [
+    "hl7.fhir.r4.core#4.0.1",
+    "hl7.fhir.xver-extensions#0.1.0",
+    "hl7.terminology.r4#6.2.0",
+    "hl7.fhir.uv.extensions.r4#5.2.0",
+    "hl7.terminology#7.4.0",
+    "hl7.fhir.uv.extensions.r5#5.2.0",
+    "hl7.terminology.r5#7.1.0",
+    "hl7.fhir.uv.extensions#5.3.0"
+  ],
+  "warnings": [
+    "Seven observations omit a performer to avoid exporting contributor identities.",
+    "UCUM [pH] terminology validation was unavailable with external terminology services disabled."
+  ],
+  "limitations": "This synthetic sample passed base validation under the recorded test configuration; it is not certification against a healthcare implementation guide."
+}

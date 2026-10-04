@@ -44,7 +44,7 @@ CurrentUser = Annotated[User, Depends(current_user)]
 
 
 def require_reviewer(user: CurrentUser) -> User:
-    # Read the role from the database on every request, not from client input.
+
     if user.role != Role.reviewer:
         raise HTTPException(403, "Reviewer role required")
     return user

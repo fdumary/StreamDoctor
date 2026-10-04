@@ -17,15 +17,25 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     environment:
+      AI_MODE: ${AI_MODE:-disabled}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai_agent:9000/analyze}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+      AI_MAX_RESPONSE_BYTES: ${AI_MAX_RESPONSE_BYTES:-65536}
+      AI_RATE_LIMIT: ${AI_RATE_LIMIT:-6}
+      UPLOAD_DIR: /app/storage/photos
       ENVIRONMENT: development
       DATABASE_URL: postgresql+psycopg://streamdoctor:${POSTGRES_PASSWORD}@db:5432/streamdoctor
       CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:5173","http://localhost:3000"]}'
       SESSION_TTL_MINUTES: ${SESSION_TTL_MINUTES:-60}
       AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-10}
       AUTH_RATE_WINDOW_SECONDS: ${AUTH_RATE_WINDOW_SECONDS:-60}
+    volumes:
+      - photo_data:/app/storage
     depends_on:
       db:
         condition: service_healthy
     command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers"]
 volumes:
   postgres_data:
+  photo_data:

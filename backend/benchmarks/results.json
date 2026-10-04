@@ -1,0 +1,214 @@
+{
+  "dataset_version": "streamtrust-synthetic-1.0",
+  "scoring_version": "streamtrust-1.0",
+  "cases": 22,
+  "positive_class": "requires_review",
+  "confusion_matrix": {
+    "true_positive": 14,
+    "false_positive": 0,
+    "false_negative": 0,
+    "true_negative": 8
+  },
+  "precision": 1.0,
+  "recall": 1.0,
+  "accuracy": 1.0,
+  "limitations": "Authored synthetic policy scenarios, not an independent ecological benchmark or a measurement of AI vision accuracy. No photos or real model predictions were evaluated.",
+  "results": [
+    {
+      "id": "clear-live-agreement",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": []
+    },
+    {
+      "id": "cloudy-live-agreement",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": []
+    },
+    {
+      "id": "no-ai-evidence",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.3,
+      "flags": []
+    },
+    {
+      "id": "mock-is-not-evidence",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.3,
+      "flags": []
+    },
+    {
+      "id": "unusable-photo",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.3,
+      "flags": []
+    },
+    {
+      "id": "missing-photo",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 70.0,
+      "evidence_coverage": 0.3,
+      "flags": [
+        "missing_photo"
+      ]
+    },
+    {
+      "id": "photo-disagreement",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 42.86,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "photo_disagreement"
+      ]
+    },
+    {
+      "id": "accepted-suggestion-still-disagrees",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 42.86,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "photo_disagreement"
+      ]
+    },
+    {
+      "id": "high-ph-is-reviewable",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "unusual_ph"
+      ]
+    },
+    {
+      "id": "low-ph-is-reviewable",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "unusual_ph"
+      ]
+    },
+    {
+      "id": "boundary-ph-six",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": []
+    },
+    {
+      "id": "boundary-ph-nine",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": []
+    },
+    {
+      "id": "dry-with-foam",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 91.43,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "dry_with_foam"
+      ]
+    },
+    {
+      "id": "dry-pool-measurement",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "dry_with_ph"
+      ]
+    },
+    {
+      "id": "limited-known-observations",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.3,
+      "flags": [
+        "limited_observations"
+      ]
+    },
+    {
+      "id": "independent-peers-agree",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 100.0,
+      "evidence_coverage": 0.9,
+      "flags": []
+    },
+    {
+      "id": "independent-peers-disagree",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 96.3,
+      "evidence_coverage": 0.9,
+      "flags": [
+        "peer_disagreement"
+      ]
+    },
+    {
+      "id": "copied-photo",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": [
+        "reused_photo"
+      ]
+    },
+    {
+      "id": "positive-history",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 97.5,
+      "evidence_coverage": 0.8,
+      "flags": []
+    },
+    {
+      "id": "negative-history-with-strong-evidence",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 90.0,
+      "evidence_coverage": 0.8,
+      "flags": []
+    },
+    {
+      "id": "unknown-ai-is-not-agreement",
+      "expected_review": true,
+      "predicted_review": true,
+      "score": 100.0,
+      "evidence_coverage": 0.3,
+      "flags": []
+    },
+    {
+      "id": "plausible-sewage-report",
+      "expected_review": false,
+      "predicted_review": false,
+      "score": 100.0,
+      "evidence_coverage": 0.7,
+      "flags": []
+    }
+  ]
+}

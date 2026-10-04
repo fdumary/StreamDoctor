@@ -1,11 +1,4 @@
-__pycache__/
-*.py[cod]
-.venv/
-.env
-*.db
-*.db-*
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-docs/
+demo/
+credentials.json
+*.env
+!*.env.example

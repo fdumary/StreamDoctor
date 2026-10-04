@@ -10,5 +10,5 @@ router = APIRouter(prefix="/reviewer", tags=["Reviewer permissions"])
 
 @router.get("/access")
 def reviewer_access(user: Annotated[User, Depends(require_reviewer)]):
-    """Phase 1 permission check. The review queue arrives in Phase 4."""
+    """Check reviewer access."""
     return {"allowed": True, "role": user.role}

@@ -1,0 +1,172 @@
+{
+  "version": "streamtrust-synthetic-1.0",
+  "license": "CC0-1.0",
+  "provenance": "Authored synthetic scenarios. live_fixture stipulates comparison data in an isolated database; it is not model output. Labels indicate whether review is expected, not environmental safety.",
+  "cases": [
+    {
+      "id": "clear-live-agreement",
+      "expected_review": false
+    },
+    {
+      "id": "cloudy-live-agreement",
+      "fields": {
+        "clarity": "cloudy"
+      },
+      "expected_review": false
+    },
+    {
+      "id": "no-ai-evidence",
+      "ai": "none",
+      "expected_review": true
+    },
+    {
+      "id": "mock-is-not-evidence",
+      "ai": "mock",
+      "expected_review": true
+    },
+    {
+      "id": "unusable-photo",
+      "unusable": true,
+      "expected_review": true
+    },
+    {
+      "id": "missing-photo",
+      "photo": false,
+      "expected_review": true
+    },
+    {
+      "id": "photo-disagreement",
+      "suggestions": {
+        "clarity": "cloudy"
+      },
+      "expected_review": true
+    },
+    {
+      "id": "accepted-suggestion-still-disagrees",
+      "fields": {
+        "clarity": "cloudy"
+      },
+      "original": {
+        "clarity": "clear"
+      },
+      "expected_review": true
+    },
+    {
+      "id": "high-ph-is-reviewable",
+      "fields": {
+        "ph": 11
+      },
+      "expected_review": true
+    },
+    {
+      "id": "low-ph-is-reviewable",
+      "fields": {
+        "ph": 4
+      },
+      "expected_review": true
+    },
+    {
+      "id": "boundary-ph-six",
+      "fields": {
+        "ph": 6
+      },
+      "expected_review": false
+    },
+    {
+      "id": "boundary-ph-nine",
+      "fields": {
+        "ph": 9
+      },
+      "expected_review": false
+    },
+    {
+      "id": "dry-with-foam",
+      "fields": {
+        "flow": "dry",
+        "foam": "extensive"
+      },
+      "expected_review": true
+    },
+    {
+      "id": "dry-pool-measurement",
+      "fields": {
+        "flow": "dry",
+        "ph": 7
+      },
+      "expected_review": true
+    },
+    {
+      "id": "limited-known-observations",
+      "fields": {
+        "clarity": "unknown",
+        "smell": "unknown",
+        "flow": "unknown",
+        "foam": "unknown",
+        "visible_life": "unknown",
+        "water_color": "unknown"
+      },
+      "expected_review": true
+    },
+    {
+      "id": "independent-peers-agree",
+      "peers": [
+        {},
+        {}
+      ],
+      "expected_review": false
+    },
+    {
+      "id": "independent-peers-disagree",
+      "peers": [
+        {
+          "clarity": "cloudy"
+        },
+        {
+          "clarity": "cloudy"
+        }
+      ],
+      "expected_review": true
+    },
+    {
+      "id": "copied-photo",
+      "peers": [
+        {},
+        {}
+      ],
+      "duplicate_photo": true,
+      "expected_review": true
+    },
+    {
+      "id": "positive-history",
+      "history": [
+        "approved",
+        "approved",
+        "approved"
+      ],
+      "expected_review": false
+    },
+    {
+      "id": "negative-history-with-strong-evidence",
+      "history": [
+        "rejected",
+        "rejected",
+        "rejected"
+      ],
+      "expected_review": false
+    },
+    {
+      "id": "unknown-ai-is-not-agreement",
+      "suggestions": {
+        "clarity": "unknown"
+      },
+      "expected_review": true
+    },
+    {
+      "id": "plausible-sewage-report",
+      "fields": {
+        "smell": "sewage"
+      },
+      "expected_review": false
+    }
+  ]
+}

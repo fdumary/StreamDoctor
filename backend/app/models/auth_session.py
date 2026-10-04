@@ -9,5 +9,5 @@ class AuthSession(Base):
 
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    # UTC epoch seconds avoids timezone differences between SQLite and PostgreSQL.
+
     expires_at: Mapped[int] = mapped_column(BigInteger, index=True)
