@@ -23,7 +23,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .auth-card input, .input-label input, .input-label textarea, .input-label select, .site-picker select { font: inherit; color: var(--ink); width: 100%; border: 1px solid #cbd8cb; border-radius: 6px; background: #fffefa; padding: 10px; }
 .input-label span, .muted { font-size: 12px; color: var(--muted); line-height: 1.6; }
 .text-button { background: transparent; border: 0; color: #286b56; text-decoration: underline; padding: 8px 0; font: inherit; font-size: 12px; }
-.auth-card > .text-button { margin-top: 18px; }
+.auth-card > .text-button { display: block; margin-top: 18px; }
 .site-picker { display: flex; align-items: center; gap: 7px; margin: 30px 0 22px; }
 .site-picker select { min-width: 0; font-size: 11px; }
 .nav-list button { width: 100%; font-family: inherit; border: 0; text-align: left; cursor: pointer; }
