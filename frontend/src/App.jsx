@@ -9,11 +9,21 @@ import { allSites, hasSession, label, observationPayload, photoPath, reportPath,
 import './styles.css';
 
 const fields = ['clarity', 'smell', 'flow', 'foam', 'visible_life', 'water_color'];
+const guestSite = { id: '00000000-0000-4000-8000-000000000001', name: 'Guest stream preview', is_demo: true };
+const guestQuestions = [
+  ['clarity', 'How clear does the water look?', 'Cloudiness describes appearance, not a measured turbidity value.', ['clear', 'slightly_cloudy', 'cloudy', 'opaque', 'unknown']],
+  ['smell', 'Did you notice a smell?', 'Only report a smell noticed from a safe distance.', ['none', 'earthy', 'sewage', 'chemical', 'other', 'unknown']],
+  ['flow', 'How is the water moving?', 'Still means water is present but not visibly moving.', ['still', 'slow', 'moderate', 'fast', 'dry', 'unknown']],
+  ['foam', 'Can you see foam?', 'Foam alone does not identify pollution.', ['none', 'small_patches', 'extensive', 'unknown']],
+  ['visible_life', 'What living things can you see?', 'None observed does not establish that life is absent.', ['none_observed', 'plants', 'animals', 'both', 'unknown']],
+  ['water_color', 'What color does the water appear?', 'Lighting and the streambed can affect color.', ['colorless', 'brown', 'green', 'black', 'other', 'unknown']],
+].map(([field, question, help, options]) => ({ field, question, help, options: options.map(value => ({ value, label: value.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()) })) }));
 function localTime(value = new Date()) { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 function newForm() { return { ...Object.fromEntries(fields.map(key => [key, null])), notes: '', ph: '', observed_at: localTime() }; }
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [guestMode, setGuestMode] = useState(false);
   const [booting, setBooting] = useState(hasSession());
   const [sites, setSites] = useState([]);
   const [siteId, setSiteId] = useState('');
@@ -45,7 +55,12 @@ export default function App() {
   const imageId = report?.photos.find(p => p.id === analysis?.evidence_photo_id)?.id || report?.photos.at(-1)?.id;
 
   function reset() { setForm(newForm()); setReport(null); setAnalysis(null); setAssessment(null); setPhotoFile(null); setDirty(false); setConsent(false); setError(''); setNotice(''); analysisRequest.current = null; reviewRequest.current = null; }
-  function expire() { setToken(''); setUser(null); setSites([]); setSiteId(''); setReports({ items: [], total: 0 }); setQueue(null); setCard(null); setNeeds(null); reset(); }
+  function enterGuest() {
+    setGuestMode(true); setToken(''); setUser({ id: 'guest', email: '', display_name: 'Guest', role: 'volunteer' });
+    setSites([guestSite]); setQuestions(guestQuestions); setSiteId(guestSite.id); setSynthetic(true); setReports({ items: [], total: 0 });
+    reset(); setNotice('Guest preview mode. Connect the backend to save observations.');
+  }
+  function expire() { setGuestMode(false); setToken(''); setUser(null); setSites([]); setSiteId(''); setReports({ items: [], total: 0 }); setQueue(null); setCard(null); setNeeds(null); reset(); }
   useEffect(() => {
     const controller = new AbortController();
     if (hasSession()) request('/users/me', { signal: controller.signal }).then(setUser).catch(err => { if (err.name !== 'AbortError') { setToken(''); setError(err.message); } }).finally(() => setBooting(false));
@@ -54,7 +69,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || guestMode) return;
     let active = true;
     Promise.all([allSites(), request('/questionnaire'), request('/reports?limit=20')]).then(([available, questionnaire, mine]) => {
       if (!active) return;
@@ -62,17 +77,17 @@ export default function App() {
       if (available.length) { setSiteId(available[0].id); setSynthetic(available[0].is_demo); }
     }).catch(err => { if (active) setError(err.message); });
     return () => { active = false; };
-  }, [user]);
+  }, [user, guestMode]);
 
   useEffect(() => {
     setCard(null); setNeeds(null); setInsightError(''); setQueue(null);
-    if (!user || !siteId) return;
+    if (!user || !siteId || guestMode) return;
     const controller = new AbortController();
     const query = `?synthetic=${synthetic}`;
     Promise.all([request(`/sites/${siteId}/diagnosis${query}`, { signal: controller.signal }), request(`/sites/${siteId}/monitoring-needs${query}`, { signal: controller.signal })]).then(([nextCard, nextNeeds]) => { setCard(nextCard); setNeeds(nextNeeds); }).catch(err => { if (err.name !== 'AbortError') setInsightError(err.message); });
     if (user.role === 'reviewer') request(`/reviews${query}&limit=100&include_optional=true`, { signal: controller.signal }).then(setQueue).catch(err => { if (err.name !== 'AbortError') setError(err.message); });
     return () => controller.abort();
-  }, [user, siteId, synthetic, revision]);
+  }, [user, siteId, synthetic, revision, guestMode]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -179,7 +194,7 @@ export default function App() {
   }
 
   if (booting) return <main className="auth-page"><p role="status">Restoring your session…</p></main>;
-  if (!user) return <Auth onLogin={setUser} />;
+  if (!user) return <Auth onLogin={setUser} onGuest={enterGuest} />;
   return <div className="app-shell">
     <aside className={`sidebar ${menu ? 'mobile-open' : ''}`}><div className="brand"><span className="brand-mark"><Waves size={21} /></span><span>StreamDoctor</span></div>
       <label className="site-picker"><MapPin size={15} /><select aria-label="Stream site" value={siteId} disabled={Boolean(busy)} onChange={event => { reset(); setSiteId(event.target.value); setSynthetic(sites.find(s => s.id === event.target.value)?.is_demo || false); }}><option value="" disabled>Select a stream</option>{sites.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Waves } from 'lucide-react';
 import { request, setToken } from '../services/api';
 
-export default function Auth({ onLogin }) {
+export default function Auth({ onLogin, onGuest }) {
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +22,10 @@ export default function Auth({ onLogin }) {
       const session = await request('/auth/guest', { method: 'POST' });
       setToken(session.access_token);
       onLogin(await request('/users/me'));
-    } catch (err) { setError(err.message); } finally { setBusy(false); }
+    } catch (_err) {
+      setToken('');
+      onGuest();
+    } finally { setBusy(false); }
   }
   return <main className="auth-page"><div className="panel auth-card">
     <div className="brand"><span className="brand-mark"><Waves size={21} /></span>StreamDoctor</div>
