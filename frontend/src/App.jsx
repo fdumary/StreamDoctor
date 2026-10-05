@@ -22,6 +22,25 @@ const guestDraftKey = 'streamdoctor.guest-draft';
 function localTime(value = new Date()) { const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 function newForm() { return { ...Object.fromEntries(fields.map(key => [key, null])), notes: '', ph: '', observed_at: localTime() }; }
 function guestReportSummary(report) { return { ...report, photos: undefined }; }
+function guestAssessment() {
+  const component = name => ({ name, available: false, score: 0, reasons: ['More saved observations are needed for this signal.'] });
+  return {
+    score: 0,
+    review_status: 'pending',
+    evidence_coverage: 0,
+    components: {
+      ai_photo_agreement: component('Photo agreement'),
+      plausibility: component('Plausibility'),
+      nearby_agreement: component('Nearby reports'),
+      contributor_history: component('Track record'),
+    },
+    reasons: ['This preview report has been saved locally.'],
+  };
+}
+function guestDiagnosis() {
+  const verdict = { status: 'unknown', label: 'Awaiting more observations', contributing_reports: 1, excluded_by_trust: 0, excluded_repeats: 0, excluded_incomplete: 0, indicators: [], latest_observation_at: new Date().toISOString(), limitations: ['A single observation cannot establish stream health.'] };
+  return { site_name: guestSite.name, trusted: verdict, unfiltered: verdict, trend: { direction: 'stable' }, audiences: { citizens: { summary: 'Keep observing this stream over time to build a clearer picture.', actions: ['Add another observation after a future visit.'] }, researchers: { summary: 'Additional observations are needed for comparison.', actions: ['Collect repeated observations using the same approach.'] }, planners: { summary: 'This preview does not provide enough evidence for planning.', actions: ['Review a longer observation record.'] } } };
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -231,6 +250,7 @@ export default function App() {
       const submitted = { ...saved, status: 'submitted', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() };
       localStorage.setItem(guestDraftKey, JSON.stringify(submitted));
       setReport(submitted); setReports({ items: [guestReportSummary(submitted)], total: 1, limit: 20, offset: 0 });
+      setAssessment(guestAssessment()); setCard(guestDiagnosis());
       setNotice('Check-up submitted in preview.');
       return;
     }
